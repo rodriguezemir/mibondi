@@ -1,0 +1,353 @@
+---
+const lineas = Array.from({ length: 43 }, (_, i) => 10 + i);
+
+const tipoLabels: Record<string, string> = {
+  desvio: "Desvío",
+  paro: "Paro",
+  novedad: "Novedad",
+  corte: "Corte",
+};
+
+const tipoClasses: Record<string, string> = {
+  desvio: "bg-amber-100 text-amber-800",
+  paro: "bg-red-100 text-red-800",
+  novedad: "bg-blue-100 text-blue-800",
+  corte: "bg-yellow-100 text-yellow-800",
+};
+
+const noticias = [
+  {
+    id: 1,
+    tipo: "desvio",
+    titulo: "Línea 12 con desvío por obra en Av. Colón",
+    descripcion:
+      "Por trabajos de bacheo, la línea 12 no circula por Av. Colón entre Sucre y Santa Rosa. Tomar recorrido alternativo por Av. General Paz.",
+    fecha: "2026-06-28T08:30:00",
+  },
+  {
+    id: 2,
+    tipo: "paro",
+    titulo: "Paro de transporte previsto para el viernes",
+    descripcion:
+      "La UTA anunció un paro de 24 horas para el viernes 4 de julio. No habrá servicio de colectivo en toda la ciudad.",
+    fecha: "2026-06-27T15:00:00",
+  },
+  {
+    id: 3,
+    tipo: "novedad",
+    titulo: "Nueva parada en Barrio Cerro de las Rosas",
+    descripcion:
+      "Se incorporó la parada 4521 en la intersección de Av. Rafael Núñez y Tristán Malbrán. Disponible desde hoy para las líneas 30, 31 y 32.",
+    fecha: "2026-06-26T09:15:00",
+  },
+  {
+    id: 4,
+    tipo: "corte",
+    titulo: "Corte total en Av. Hipólito Yrigoyen",
+    descripcion:
+      "Por manifestación, corte total entre Rivadavia y San Martín. Recorridos alternativos: 14, 15, 22.",
+    fecha: "2026-06-25T18:45:00",
+  },
+];
+
+const colectivos = [
+  { linea: 12, destino: "Plaza San Martín", minutos: 3, distancia: 120 },
+  { linea: 30, destino: "Cerro de las Rosas", minutos: 5, distancia: 250 },
+  { linea: 22, destino: "Barrio Alberdi", minutos: 7, distancia: 380 },
+  { linea: 14, destino: "Terminal de Ómnibus", minutos: 10, distancia: 450 },
+  { linea: 40, destino: "Nueva Córdoba", minutos: 12, distancia: 600 },
+];
+---
+
+<div
+  id="sheet"
+  class="fixed z-10 inset-x-0 bottom-0 md:inset-x-auto md:inset-y-0 md:left-0 md:top-14 md:h-full! md:w-90 bg-white/90 backdrop-blur shadow-lg flex flex-col select-none touch-pan-y transition-[height] duration-200 ease-out md:transition-all"
+  style="height: 25vh;"
+>
+  <button
+    id="handle"
+    type="button"
+    aria-label="Arrastrar para redimensionar"
+    class="md:hidden w-full h-6 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
+  >
+    <span class="block w-10 h-1.5 rounded-full bg-gray-400 animate-pulse"
+    ></span>
+  </button>
+
+  <div class="flex flex-col gap-3 p-4 flex-1 min-h-0">
+    <div role="tablist" class="flex border-b border-gray-200 -mx-4 px-4">
+      <button
+        type="button"
+        role="tab"
+        data-tab="navegacion"
+        aria-selected="true"
+        class="flex-1 py-2 transition-all text-sm font-semibold border-b-2 border-amber-700 text-amber-700 -mb-px"
+      >
+        Navegación
+      </button>
+      <button
+        type="button"
+        role="tab"
+        data-tab="lineas"
+        aria-selected="false"
+        class="flex-1 py-2 transition-all text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"
+      >
+        Líneas
+      </button>
+      <button
+        type="button"
+        role="tab"
+        data-tab="noticias"
+        aria-selected="false"
+        class="flex-1 py-2 transition-all text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"
+      >
+        Noticias
+      </button>
+    </div>
+
+    <div data-panel="lineas" class="hidden flex-1 flex-col gap-3 min-h-0">
+      <label class="sr-only" for="parada">Número de parada</label>
+      <input
+        id="parada"
+        type="text"
+        inputmode="numeric"
+        placeholder="Número de parada..."
+        class="w-full rounded-lg border border-gray-300 bg-white/80 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-amber-700"
+      />
+
+      <div
+        class="mt-5 flex-1 overflow-y-auto grid grid-cols-5 md:grid-cols-3 gap-2 content-start"
+      >
+        {
+          lineas.map((n, i) => (
+            <button
+              type="button"
+              class="animate-fade-in bg-amber-700 hover:bg-amber-800 active:bg-amber-900 text-white rounded-xl py-1.5 font-semibold transition-colors"
+              style={`animation-delay: ${i * 15}ms`}
+            >
+              {n}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+
+    <div
+      data-panel="noticias"
+      class="hidden flex-1 overflow-y-auto flex-col gap-3 min-h-0"
+    >
+      {
+        noticias.map((n, i) => (
+          <article
+            class="animate-fade-in-up rounded-xl border border-gray-200 bg-white/70 p-3 flex flex-col gap-1.5"
+            style={`animation-delay: ${i * 100}ms`}
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span
+                class={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${tipoClasses[n.tipo]}`}
+              >
+                {tipoLabels[n.tipo]}
+              </span>
+              <time data-fecha={n.fecha} class="text-xs text-gray-500">
+                {n.fecha}
+              </time>
+            </div>
+            <h3 class="font-bold text-sm leading-snug">{n.titulo}</h3>
+            <p class="text-xs text-gray-600 leading-snug">{n.descripcion}</p>
+          </article>
+        ))
+      }
+    </div>
+
+    <div
+      data-panel="navegacion"
+      class="flex-1 overflow-y-auto flex-col gap-4 min-h-0"
+    >
+      <label class="sr-only" for="destino">¿A dónde vamos?</label>
+      <input
+        id="destino"
+        type="text"
+        placeholder="¿A dónde vamos?"
+        class="w-full rounded-lg border border-gray-300 bg-white/80 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-amber-700"
+      />
+
+      <section>
+        <h3
+          class="mt-10 text-xs font-bold uppercase tracking-wide text-gray-500 mb-2"
+        >
+          Colectivos cerca
+        </h3>
+        <ul class="flex flex-col gap-2">
+          {
+            colectivos.map((c, i) => (
+              <li
+                class="animate-fade-in-up"
+                style={`animation-delay: ${i * 80}ms`}
+              >
+                <button
+                  type="button"
+                  class="w-full text-left rounded-xl border border-gray-200 bg-white/70 p-3 hover:bg-white transition-colors"
+                >
+                  <div class="flex items-center gap-3">
+                    <span class="shrink-0 bg-amber-700 text-white rounded-lg w-10 h-10 flex items-center justify-center font-black">
+                      {c.linea}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-semibold text-sm truncate">{c.destino}</p>
+                      <p class="text-xs text-gray-500">
+                        Llega en {c.minutos} min · a {c.distancia} m
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section>
+        <h3
+          class="text-xs mt-10 font-bold uppercase tracking-wide text-gray-500 mb-2"
+        >
+          Noticias relevantes
+        </h3>
+        <div class="flex flex-col gap-3">
+          {
+            noticias.slice(0, 2).map((n, i) => (
+              <article
+                class="animate-fade-in-up rounded-xl border border-gray-200 bg-white/70 p-3 flex flex-col gap-1.5"
+                style={`animation-delay: ${i * 100}ms`}
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span
+                    class={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${tipoClasses[n.tipo]}`}
+                  >
+                    {tipoLabels[n.tipo]}
+                  </span>
+                  <time data-fecha={n.fecha} class="text-xs text-gray-500">
+                    {n.fecha}
+                  </time>
+                </div>
+                <h4 class="font-bold text-sm leading-snug">{n.titulo}</h4>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  const sheet = document.getElementById("sheet");
+  const handle = document.getElementById("handle");
+
+  if (sheet && handle) {
+    const isDesktop = () => window.matchMedia("(min-width: 768px)").matches;
+    const setHeight = (px: number) => {
+      sheet.style.height = `${px}px`;
+    };
+
+    const snaps = () => {
+      const vh = window.innerHeight;
+      return [vh * 0.25, vh * 0.5, vh * 0.85];
+    };
+
+    const snapToClosest = () => {
+      const current = sheet.getBoundingClientRect().height;
+      const [s1, s2, s3] = snaps();
+      const closest = [s1, s2, s3].reduce((a, b) =>
+        Math.abs(b - current) < Math.abs(a - current) ? b : a,
+      );
+      setHeight(closest);
+      sheet.dataset.lastH = String(closest);
+    };
+
+    let dragging = false;
+    let startY = 0;
+    let startH = 0;
+
+    const onDown = (e: { clientY: number; pointerId: number }) => {
+      if (isDesktop()) return;
+      dragging = true;
+      startY = e.clientY;
+      startH = sheet.getBoundingClientRect().height;
+      handle.setPointerCapture(e.pointerId);
+      sheet.style.transition = "none";
+    };
+
+    const onMove = (e: { clientY: number }) => {
+      if (!dragging) return;
+      const delta = startY - e.clientY;
+      const maxH = window.innerHeight * 0.9;
+      const newH = Math.max(80, Math.min(maxH, startH + delta));
+      setHeight(newH);
+    };
+
+    const onUp = (e: { pointerId: number }) => {
+      if (!dragging) return;
+      dragging = false;
+      try {
+        handle.releasePointerCapture(e.pointerId);
+      } catch {}
+      sheet.style.transition = "";
+      snapToClosest();
+    };
+
+    handle.addEventListener("pointerdown", onDown);
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onUp);
+    handle.addEventListener("pointercancel", onUp);
+
+    const mq = window.matchMedia("(min-width: 768px)");
+    mq.addEventListener("change", () => {
+      if (mq.matches) {
+        sheet.style.height = "";
+      } else if (sheet.dataset.lastH) {
+        setHeight(Number(sheet.dataset.lastH));
+      }
+    });
+  }
+
+  const tabs = document.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+  const panels = document.querySelectorAll<HTMLDivElement>("[data-panel]");
+
+  tabs.forEach((t) => {
+    t.addEventListener("click", () => {
+      const target = t.dataset.tab;
+      tabs.forEach((x) => {
+        const active = x === t;
+        x.setAttribute("aria-selected", active ? "true" : "false");
+        x.classList.toggle("border-amber-700", active);
+        x.classList.toggle("text-amber-700", active);
+        x.classList.toggle("border-transparent", !active);
+        x.classList.toggle("text-gray-500", !active);
+      });
+      panels.forEach((p) => {
+        p.classList.toggle("hidden", p.dataset.panel !== target);
+      });
+    });
+  });
+
+  const formatRelativa = (iso: string) => {
+    const then = new Date(iso);
+    const now = new Date();
+    const diff = (now.getTime() - then.getTime()) / 1000;
+    if (diff < 60) return "hace un momento";
+    if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+    if (diff < 604800) return `hace ${Math.floor(diff / 86400)} d`;
+    return then.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "short",
+    });
+  };
+
+  document
+    .querySelectorAll<HTMLTimeElement>("time[data-fecha]")
+    .forEach((el) => {
+      const iso = el.dataset.fecha;
+      if (iso) el.textContent = formatRelativa(iso);
+    });
+</script>

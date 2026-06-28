@@ -1,0 +1,40 @@
+---
+
+---
+
+<header
+  id="appHeader"
+  class="hidden md:flex fixed top-0 left-0 right-0 z-20 h-14 items-center justify-between px-6 bg-white/90 backdrop-blur shadow-md transition-opacity duration-200 opacity-100"
+>
+  <div class="font-black text-xl tracking-tight">MiBondi</div>
+  <div class="text-sm text-gray-700">
+    <span class="font-semibold">Línea:</span>
+    <span class="ml-1">—</span>
+    <span class="mx-3 text-gray-300">·</span>
+    <span class="font-semibold">Parada:</span>
+    <span class="ml-1">—</span>
+  </div>
+</header>
+
+<!-- <script>
+  const header = document.getElementById("appHeader");
+  const sidebar = document.getElementById("sheet");
+
+  if (header && sidebar) {
+    const show = () => {
+      header.classList.remove("opacity-0", "pointer-events-none");
+      header.classList.add("opacity-100");
+    };
+    const hide = () => {
+      header.classList.add("opacity-0", "pointer-events-none");
+      header.classList.remove("opacity-100");
+    };
+
+    sidebar.addEventListener("mouseenter", show);
+    sidebar.addEventListener("click", show);
+
+    document.addEventListener("click", (e) => {
+      if (!sidebar.contains(e.target as Node)) hide();
+    });
+  }
+</script> -->
