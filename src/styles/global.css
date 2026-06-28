@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "tw-animations";
+@import "tailwind-animations";
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
