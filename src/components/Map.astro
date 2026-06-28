@@ -8,13 +8,37 @@
   import Map from "ol/Map.js";
   import View from "ol/View.js";
   import TileLayer from "ol/layer/Tile.js";
+  import VectorLayer from "ol/layer/Vector.js";
   import XYZ from "ol/source/XYZ.js";
+  import VectorSource from "ol/source/Vector.js";
+  import Feature from "ol/Feature.js";
+  import { LineString, Point } from "ol/geom.js";
   import { fromLonLat } from "ol/proj.js";
+  import { Style, Stroke, Fill, Circle as CircleStyle } from "ol/style.js";
   import "ol/ol.css";
+
+  const API_BASE = "http://localhost:8080";
 
   const cordoba: [number, number] = [-64.1888, -31.4201];
 
-  new Map({
+  const rutaSource = new VectorSource();
+  const rutaLayer = new VectorLayer({
+    source: rutaSource,
+  });
+
+  const userSource = new VectorSource();
+  const userLayer = new VectorLayer({
+    source: userSource,
+    style: new Style({
+      image: new CircleStyle({
+        radius: 8,
+        fill: new Fill({ color: "#2563eb" }),
+        stroke: new Stroke({ color: "#ffffff", width: 2 }),
+      }),
+    }),
+  });
+
+  const map = new Map({
     target: "map",
     controls: [],
     layers: [
@@ -23,11 +47,85 @@
           url: "https://{a-d}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
         }),
       }),
+      rutaLayer,
+      userLayer,
     ],
     view: new View({
       center: fromLonLat(cordoba),
       zoom: 13,
       minZoom: 12,
+      enableRotation: false,
     }),
+  });
+
+  if ("geolocation" in navigator) {
+    let firstFix = true;
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = fromLonLat([pos.coords.longitude, pos.coords.latitude]);
+        userSource.clear();
+        userSource.addFeature(new Feature({ geometry: new Point(coords) }));
+        if (firstFix) {
+          map.getView().animate({ center: coords, duration: 800 });
+          firstFix = false;
+        }
+      },
+      (err) => console.warn("Geolocation:", err.message),
+      { enableHighAccuracy: true, maximumAge: 5000 },
+    );
+  }
+
+  interface RutaSelectedDetail {
+    shapeId: string;
+    rutaId: string;
+    color: string;
+  }
+
+  interface ShapeResponse {
+    shape_id: string;
+    points: { lat: number; lon: number }[];
+  }
+
+  window.addEventListener("mibondi:ruta-selected", async (event) => {
+    const detail = (event as CustomEvent<RutaSelectedDetail>).detail;
+    if (!detail?.shapeId) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/shapes/${detail.shapeId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const shape = (await res.json()) as ShapeResponse;
+
+      rutaSource.clear();
+      const line = new LineString(
+        shape.points.map((p) => fromLonLat([p.lon, p.lat])),
+      );
+      const feature = new Feature({ geometry: line });
+      feature.setStyle(
+        new Style({
+          stroke: new Stroke({
+            color: detail.color,
+            width: 5,
+            lineCap: "round",
+            lineJoin: "round",
+          }),
+        }),
+      );
+      rutaSource.addFeature(feature);
+
+      const extent = rutaSource.getExtent();
+      if (extent && extent.every((v) => isFinite(v))) {
+        map.getView().fit(extent, {
+          padding: [60, 60, 60, 60],
+          maxZoom: 15,
+          duration: 800,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load shape:", err);
+    }
+  });
+
+  window.addEventListener("mibondi:ruta-cleared", () => {
+    rutaSource.clear();
   });
 </script>

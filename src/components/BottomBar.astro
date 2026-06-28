@@ -1,6 +1,4 @@
 ---
-const lineas = Array.from({ length: 43 }, (_, i) => 10 + i);
-
 const tipoLabels: Record<string, string> = {
   desvio: "Desvío",
   paro: "Paro",
@@ -115,20 +113,23 @@ const colectivos = [
         class="w-full rounded-lg border border-gray-300 bg-white/80 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-amber-700"
       />
 
-      <div
-        class="mt-5 flex-1 overflow-y-auto grid grid-cols-5 md:grid-cols-3 gap-2 content-start"
+      <button
+        id="lineas-back"
+        type="button"
+        aria-label="Volver a la lista de líneas"
+        class="hidden self-start text-sm font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-1"
       >
-        {
-          lineas.map((n, i) => (
-            <button
-              type="button"
-              class="animate-fade-in bg-amber-700 hover:bg-amber-800 active:bg-amber-900 text-white rounded-xl py-1.5 font-semibold transition-colors"
-              style={`animation-delay: ${i * 15}ms`}
-            >
-              {n}
-            </button>
-          ))
-        }
+        <span aria-hidden="true">←</span>
+        <span>Todas las líneas</span>
+      </button>
+
+      <div
+        id="lineas-grid"
+        class="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain grid grid-cols-5 md:grid-cols-3 gap-2 content-start"
+      >
+        <p class="col-span-full text-center text-sm text-gray-500 py-4">
+          Cargando líneas...
+        </p>
       </div>
     </div>
 
@@ -350,4 +351,225 @@ const colectivos = [
       const iso = el.dataset.fecha;
       if (iso) el.textContent = formatRelativa(iso);
     });
+
+  interface Linea {
+    linea_id: string;
+    short_name: string;
+    long_name: string;
+    agency_id: string;
+    color: string;
+    text_color: string;
+  }
+
+  interface Ruta {
+    ruta_id: string;
+    linea_id: string;
+    route_id: string;
+    headsign: string;
+    direction: number;
+    shape_id: string;
+    agency_id: string;
+  }
+
+  const API_BASE = "http://localhost:8080";
+
+  const escapeHtml = (s: string): string =>
+    s.replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c] as string,
+    );
+
+  const grid = document.getElementById("lineas-grid")!;
+  const backBtn = document.getElementById("lineas-back")!;
+
+  let lineasData: Linea[] = [];
+
+  const LINEAS_CLASSES =
+    "mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain grid grid-cols-5 md:grid-cols-3 gap-2 content-start";
+  const RUTAS_CLASSES =
+    "mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain flex flex-col gap-2";
+
+  const lookupLineaColor = (
+    lineaId: string | undefined,
+    agencyId: string | undefined,
+  ): string => {
+    if (!lineaId) return "#b45309";
+    const linea = lineasData.find(
+      (l) =>
+        l.linea_id === lineaId &&
+        (agencyId ? l.agency_id === agencyId : true),
+    );
+    if (linea?.color && linea.color.trim() !== "") return `#${linea.color}`;
+    return "#b45309";
+  };
+
+  const renderLineasView = () => {
+    grid.className = LINEAS_CLASSES;
+    grid.innerHTML = lineasData
+      .map((l, i) => {
+        const bg = l.color && l.color.trim() !== "" ? `#${l.color}` : "#a16207";
+        const delay = Math.min(i * 15, 500);
+        return `
+          <button
+            type="button"
+            class="mibondi-linea-btn animate-fade-in-up text-white rounded-xl py-1.5 font-semibold transition-colors"
+            style="background-color: ${bg}; animation-delay: ${delay}ms"
+            data-linea-id="${escapeHtml(l.linea_id)}"
+          >
+            ${escapeHtml(l.short_name)}
+          </button>
+        `;
+      })
+      .join("");
+
+    grid
+      .querySelectorAll<HTMLButtonElement>(".mibondi-linea-btn")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.lineaId;
+          if (id) showRutasView(id);
+        });
+      });
+  };
+
+  const renderRutasView = async (lineaId: string) => {
+    grid.className = RUTAS_CLASSES;
+    grid.innerHTML =
+      '<p class="text-center text-sm text-gray-500 py-4">Cargando rutas...</p>';
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/rutas/${encodeURIComponent(lineaId)}`,
+      );
+      if (res.status === 404) {
+        grid.innerHTML =
+          '<p class="text-center text-sm text-gray-500 py-4">No hay rutas para esta línea.</p>';
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rutas = (await res.json()) as Ruta[];
+
+      if (rutas.length === 0) {
+        grid.innerHTML =
+          '<p class="text-center text-sm text-gray-500 py-4">No hay rutas para esta línea.</p>';
+        return;
+      }
+
+      grid.innerHTML = rutas
+        .map((r, i) => {
+          const dirLabel = r.direction === 0 ? "Ida" : "Vuelta";
+          const delay = Math.min(i * 30, 300);
+          return `
+            <button
+              type="button"
+              class="mibondi-ruta-btn animate-fade-in text-left rounded-xl border border-gray-200 bg-white/80 p-3 hover:bg-white transition-colors"
+              data-shape-id="${escapeHtml(r.shape_id)}"
+              data-ruta-id="${escapeHtml(r.ruta_id)}"
+              data-direction="${r.direction}"
+              data-linea-id="${escapeHtml(r.linea_id)}"
+              data-agency-id="${escapeHtml(r.agency_id)}"
+              style="animation-delay: ${delay}ms"
+            >
+              <div class="flex items-center gap-3">
+                <span class="shrink-0 bg-amber-700 text-white rounded-lg px-2.5 h-10 flex items-center justify-center text-[10px] font-bold uppercase tracking-wide">
+                  ${dirLabel}
+                </span>
+                <span class="font-medium text-sm flex-1">${escapeHtml(r.headsign)}</span>
+              </div>
+            </button>
+          `;
+        })
+        .join("");
+
+      grid.querySelectorAll<HTMLButtonElement>(".mibondi-ruta-btn").forEach(
+        (btn) => {
+          btn.addEventListener("click", () => {
+            const shapeId = btn.dataset.shapeId;
+            const rutaId = btn.dataset.rutaId;
+            const lineaId = btn.dataset.lineaId;
+            const agencyId = btn.dataset.agencyId;
+            if (!shapeId) return;
+            const color = lookupLineaColor(lineaId, agencyId);
+            window.dispatchEvent(
+              new CustomEvent("mibondi:ruta-selected", {
+                detail: { shapeId, rutaId, color },
+              }),
+            );
+          });
+        },
+      );
+    } catch (err) {
+      grid.innerHTML = `<p class="text-center text-sm text-red-600 py-4">No se pudieron cargar las rutas: ${escapeHtml((err as Error).message)}</p>`;
+    }
+  };
+
+  const showLineasView = () => {
+    backBtn.classList.add("hidden");
+    renderLineasView();
+    window.dispatchEvent(new CustomEvent("mibondi:ruta-cleared"));
+  };
+
+  const showRutasView = (lineaId: string) => {
+    backBtn.classList.remove("hidden");
+    void renderRutasView(lineaId);
+  };
+
+  backBtn.addEventListener("click", showLineasView);
+
+  const loadLineas = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/lineas`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const lineas = (await res.json()) as Linea[];
+      lineasData = lineas.filter(
+        (l) => l.short_name && l.short_name.trim() !== "",
+      );
+
+      if (lineasData.length === 0) {
+        grid.innerHTML =
+          '<p class="col-span-full text-center text-sm text-gray-500 py-4">No hay líneas disponibles.</p>';
+        return;
+      }
+
+      renderLineasView();
+    } catch (err) {
+      grid.innerHTML = `<p class="col-span-full text-center text-sm text-red-600 py-4">No se pudieron cargar las líneas: ${escapeHtml((err as Error).message)}</p>`;
+    }
+  };
+
+  loadLineas();
 </script>
+
+<style is:global>
+  .mibondi-linea-btn:hover {
+    filter: brightness(0.92);
+  }
+  .mibondi-linea-btn:active {
+    filter: brightness(0.84);
+  }
+
+  #lineas-grid {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(180 83 9 / 0.4) transparent;
+  }
+  #lineas-grid::-webkit-scrollbar {
+    width: 6px;
+  }
+  #lineas-grid::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  #lineas-grid::-webkit-scrollbar-thumb {
+    background-color: rgb(180 83 9 / 0.35);
+    border-radius: 9999px;
+  }
+  #lineas-grid::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(180 83 9 / 0.6);
+  }
+</style>
