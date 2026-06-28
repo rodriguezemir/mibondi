@@ -1,0 +1,50 @@
+package gtfs
+
+type Agency struct {
+	ID       string `json:"agency_id"`
+	Name     string `json:"agency_name"`
+	URL      string `json:"agency_url"`
+	Timezone string `json:"agency_timezone"`
+	Lang     string `json:"agency_lang"`
+	Phone    string `json:"agency_phone"`
+}
+
+type Linea struct {
+	ID        string `json:"linea_id"`
+	ShortName string `json:"short_name"`
+	LongName  string `json:"long_name"`
+	AgencyID  string `json:"agency_id"`
+	Color     string `json:"color"`
+	TextColor string `json:"text_color"`
+}
+
+type Route struct {
+	ID        string
+	AgencyID  string
+	ShortName string
+	LongName  string
+	Color     string
+	TextColor string
+}
+
+type Trip struct {
+	RouteID   string
+	Headsign  string
+	Direction int
+	ShapeID   string
+}
+
+type ShapePoint struct {
+	ShapeID  string
+	Lat      float64
+	Lon      float64
+	Sequence int
+}
+
+type Feed struct {
+	Agencies    []Agency
+	Lineas      []Linea
+	Routes      []Route
+	Trips       []Trip
+	ShapePoints []ShapePoint
+}
