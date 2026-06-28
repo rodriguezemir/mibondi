@@ -14,6 +14,9 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
     "astro": "^7.0.3",
-    "tailwindcss": "^4.3.1"
+    "ol": "^10.9.0",
+    "tailwind-animations": "^1.0.1",
+    "tailwindcss": "^4.3.1",
+    "tw-animations": "^2.0.0"
   }
 }
