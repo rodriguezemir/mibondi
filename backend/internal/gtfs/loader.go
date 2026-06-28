@@ -32,12 +32,18 @@ func Load(dir string) (*Feed, error) {
 		return nil, fmt.Errorf("shapes: %w", err)
 	}
 
+	stops, err := loadStops(filepath.Join(dir, "stops.txt"))
+	if err != nil {
+		return nil, fmt.Errorf("stops: %w", err)
+	}
+
 	feed := &Feed{
 		Agencies:    agencies,
 		Lineas:      buildLineas(routes),
 		Routes:      routes,
 		Trips:       trips,
 		ShapePoints: shapePoints,
+		Stops:       stops,
 	}
 
 	sort.Slice(feed.Agencies, func(i, j int) bool {
@@ -103,7 +109,9 @@ func loadTrips(path string) ([]Trip, error) {
 	for _, row := range rows[1:] {
 		dir, _ := strconv.Atoi(row[idx["direction_id"]])
 		out = append(out, Trip{
+			TripID:    row[idx["trip_id"]],
 			RouteID:   row[idx["route_id"]],
+			ServiceID: row[idx["service_id"]],
 			Headsign:  row[idx["trip_headsign"]],
 			Direction: dir,
 			ShapeID:   row[idx["shape_id"]],
@@ -132,6 +140,90 @@ func buildLineas(routes []Route) []Linea {
 		})
 	}
 	return out
+}
+
+func loadStopTimes(path string) ([]StopTime, error) {
+	rows, err := readCSV(path)
+	if err != nil {
+		return nil, err
+	}
+	idx := indexColumns(rows[0])
+	out := make([]StopTime, 0, len(rows)-1)
+	for _, row := range rows[1:] {
+		seq, _ := strconv.Atoi(row[idx["stop_sequence"]])
+		out = append(out, StopTime{
+			TripID:        row[idx["trip_id"]],
+			StopID:        row[idx["stop_id"]],
+			ArrivalTime:   row[idx["arrival_time"]],
+			DepartureTime: row[idx["departure_time"]],
+			StopSequence:  seq,
+		})
+	}
+	return out, nil
+}
+
+func LoadStopTimes(dir string) ([]StopTime, error) {
+	return loadStopTimes(filepath.Join(dir, "stop_times.txt"))
+}
+
+func loadStops(path string) ([]Stop, error) {
+	rows, err := readCSV(path)
+	if err != nil {
+		return nil, err
+	}
+	idx := indexColumns(rows[0])
+	out := make([]Stop, 0, len(rows)-1)
+	for _, row := range rows[1:] {
+		lat, _ := strconv.ParseFloat(row[idx["stop_lat"]], 64)
+		lon, _ := strconv.ParseFloat(row[idx["stop_lon"]], 64)
+		out = append(out, Stop{
+			StopID:   row[idx["stop_id"]],
+			StopName: row[idx["stop_name"]],
+			Lat:      lat,
+			Lon:      lon,
+		})
+	}
+	return out, nil
+}
+
+func LoadStops(dir string) ([]Stop, error) {
+	return loadStops(filepath.Join(dir, "stops.txt"))
+}
+
+func BuildShapeStops(trips []Trip, stops []Stop, stopTimes []StopTime) map[string][]Stop {
+	tripToShape := make(map[string]string, len(trips))
+	for _, t := range trips {
+		tripToShape[t.TripID] = t.ShapeID
+	}
+
+	stopByID := make(map[string]Stop, len(stops))
+	for _, s := range stops {
+		stopByID[s.StopID] = s
+	}
+
+	setByShape := make(map[string]map[string]struct{})
+	for _, st := range stopTimes {
+		shapeID, ok := tripToShape[st.TripID]
+		if !ok {
+			continue
+		}
+		if _, ok := setByShape[shapeID]; !ok {
+			setByShape[shapeID] = make(map[string]struct{})
+		}
+		setByShape[shapeID][st.StopID] = struct{}{}
+	}
+
+	result := make(map[string][]Stop, len(setByShape))
+	for shapeID, set := range setByShape {
+		out := make([]Stop, 0, len(set))
+		for stopID := range set {
+			if s, ok := stopByID[stopID]; ok {
+				out = append(out, s)
+			}
+		}
+		result[shapeID] = out
+	}
+	return result
 }
 
 func loadShapes(path string) ([]ShapePoint, error) {

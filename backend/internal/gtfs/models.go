@@ -28,7 +28,9 @@ type Route struct {
 }
 
 type Trip struct {
+	TripID    string
 	RouteID   string
+	ServiceID string
 	Headsign  string
 	Direction int
 	ShapeID   string
@@ -41,10 +43,26 @@ type ShapePoint struct {
 	Sequence int
 }
 
+type Stop struct {
+	StopID   string  `json:"stop_id"`
+	StopName string  `json:"stop_name"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+}
+
+type StopTime struct {
+	TripID        string
+	StopID        string
+	ArrivalTime   string
+	DepartureTime string
+	StopSequence  int
+}
+
 type Feed struct {
 	Agencies    []Agency
 	Lineas      []Linea
 	Routes      []Route
 	Trips       []Trip
 	ShapePoints []ShapePoint
+	Stops       []Stop
 }
