@@ -26,6 +26,11 @@
     source: rutaSource,
   });
 
+  const stopsSource = new VectorSource();
+  const stopsLayer = new VectorLayer({
+    source: stopsSource,
+  });
+
   const userSource = new VectorSource();
   const userLayer = new VectorLayer({
     source: userSource,
@@ -48,6 +53,7 @@
         }),
       }),
       rutaLayer,
+      stopsLayer,
       userLayer,
     ],
     view: new View({
@@ -86,21 +92,36 @@
     points: { lat: number; lon: number }[];
   }
 
+  interface StopResponse {
+    stop_id: string;
+    stop_name: string;
+    lat: number;
+    lon: number;
+  }
+
   window.addEventListener("mibondi:ruta-selected", async (event) => {
     const detail = (event as CustomEvent<RutaSelectedDetail>).detail;
     if (!detail?.shapeId) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/shapes/${detail.shapeId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const shape = (await res.json()) as ShapeResponse;
+      const [shapeRes, stopsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/shapes/${detail.shapeId}`),
+        fetch(`${API_BASE}/api/shapes/${detail.shapeId}/stops`),
+      ]);
+      if (!shapeRes.ok) throw new Error(`shape HTTP ${shapeRes.status}`);
+      if (!stopsRes.ok) throw new Error(`stops HTTP ${stopsRes.status}`);
+
+      const shape = (await shapeRes.json()) as ShapeResponse;
+      const stops = (await stopsRes.json()) as StopResponse[];
 
       rutaSource.clear();
+      stopsSource.clear();
+
       const line = new LineString(
         shape.points.map((p) => fromLonLat([p.lon, p.lat])),
       );
-      const feature = new Feature({ geometry: line });
-      feature.setStyle(
+      const lineFeature = new Feature({ geometry: line });
+      lineFeature.setStyle(
         new Style({
           stroke: new Stroke({
             color: detail.color,
@@ -110,7 +131,23 @@
           }),
         }),
       );
-      rutaSource.addFeature(feature);
+      rutaSource.addFeature(lineFeature);
+
+      for (const stop of stops) {
+        const stopFeature = new Feature({
+          geometry: new Point(fromLonLat([stop.lon, stop.lat])),
+        });
+        stopFeature.setStyle(
+          new Style({
+            image: new CircleStyle({
+              radius: 4,
+              fill: new Fill({ color: "#ffffff" }),
+              stroke: new Stroke({ color: detail.color, width: 2 }),
+            }),
+          }),
+        );
+        stopsSource.addFeature(stopFeature);
+      }
 
       const extent = rutaSource.getExtent();
       if (extent && extent.every((v) => isFinite(v))) {
@@ -127,5 +164,6 @@
 
   window.addEventListener("mibondi:ruta-cleared", () => {
     rutaSource.clear();
+    stopsSource.clear();
   });
 </script>
